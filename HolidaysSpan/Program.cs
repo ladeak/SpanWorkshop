@@ -8,14 +8,12 @@ namespace HolidaysSpan
   {
     public static async Task Main(string[] args)
     {
-      var p = new HolidayProcessorClassic();
-      Console.ReadLine();
+      var p = new HolidayProcessor();
       Stopwatch sw = new Stopwatch();
       sw.Start();
-      p.Run();
+      await p.Run();
       sw.Stop();
       Console.WriteLine(sw.ElapsedMilliseconds);
-      Console.ReadLine();
     }
   }
 }

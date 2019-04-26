@@ -1,4 +1,4 @@
-# The power of Span #
+# The power of Span
 
 ### Intro to the problem ###
 
@@ -145,8 +145,7 @@ private void PrintResult()
 ```
 
 We may notice that we can remove one if condition from ```ProcessDates``` method, as required entries will be available.
-We also have a better approach to Print the results using a ```StringBuilder```, we prepar the message to be written and we write it to the console.
-
+We also have a better approach to Print the results using a ```StringBuilder```, we prepare the message to be written and we write it to the console.
 
 ### Step 2 - Pipelines Reading Files
 
@@ -179,7 +178,7 @@ private async Task ReadFile(PipeWriter writer)
 }
 ```
 
-The method opens the file, asks a chunk of memory from the ```PipeWriter``` and then reads the file content into that memory. Advances the cursor for the pipe and ```FlushAsync``` notifies the reader that new chunck of data is available. These is repeated until the file is fully read. Once completed, ```writer.Complete()``` will tell the pipe that, there is no more data to be written to it.
+The method opens the file, asks a chunk of memory from the ```PipeWriter``` and then reads the file content into that memory. Advances the cursor for the pipe and ```FlushAsync``` notifies the reader that new chunk of data is available. These is repeated until the file is fully read. Once completed, ```writer.Complete()``` will tell the pipe that, there is no more data to be written to it.
 
 ### Step 3 - PipeReader
 
@@ -211,7 +210,7 @@ private async Task ProcessFile(PipeReader reader)
   reader.Complete();
 }
 ```
-Add a new readonly value for the NewLineByte. ```ProcessFile``` uses ```PipeReader``` to read a sequence of bytes. Internally it is (re)using byte arrays linked into a type ```ReadOnlySequence<byte>```. We find the position in the buffer for the end of the line. Each iteration we process the available data if the full line is available, finally we advance the pipe's internal cursor to the beginning of the first not fully available line.
+Add a new read-only value for the NewLineByte. ```ProcessFile``` uses ```PipeReader``` to read a sequence of bytes. Internally it is (re)using byte arrays linked into a type ```ReadOnlySequence<byte>```. We find the position in the buffer for the end of the line. Each iteration we process the available data if the full line is available, finally we advance the pipe's internal cursor to the beginning of the first not fully available line.
 
 ### Step 4 - Process Line
 
@@ -248,9 +247,9 @@ private void ProcessLine(ReadOnlySpan<byte> span)
 }
 ```
 
-When the sequence contains only a single array (segment), we can take a pointer to it for the actual Processing. When it consists of multiple segements, we need to attach them. This use-case will apply if the memory read into a segment from the file does not end at end of line. This way a line will be broken into 2 segments. The have a single ```Span<byte>``` pointer to it, we need to copy it to a single dictionary. Fortunately the size of the underlying data structure is maximized by the double of a single segment. I use here an array pool to rent a byte array, until the line is processed, then I return the array.
+When the sequence contains only a single array (segment), we can take a pointer to it for the actual Processing. When it consists of multiple segments, we need to attach them. This use-case will apply if the memory read into a segment from the file does not end at end of line. This way a line will be broken into 2 segments. The have a single ```Span<byte>``` pointer to it, we need to copy it to a single dictionary. Fortunately the size of the underlying data structure is maximized by the double of a single segment. I use here an array pool to rent a byte array, until the line is processed, then I return the array.
 
-The actual processing of a line uses ```Span<byte>``` processing. It finds the last comma to create ```Slice```s of spans. Each of this slice will contain the byte representation of a date value.  [Slicing](https://docs.microsoft.com/en-us/dotnet/api/microsoft.aspnetcore.server.kestrel.internal.system.span-1.slice?view=aspnetcore-2.0) is a very efficient operation is just creates a new *window* over the contiguous region of arbitrary memory. Span has very interesting lifetime requirements (it can live only the stack), which makes these operation safe and fast.
+The actual processing of a line uses ```Span<byte>``` processing. It finds the last comma to create ```Slice```-s of spans. Each of this slice will contain the byte representation of a date value.  [Slicing](https://docs.microsoft.com/en-us/dotnet/api/microsoft.aspnetcore.server.kestrel.internal.system.span-1.slice?view=aspnetcore-2.0) is a very efficient operation is just creates a new *window* over the contiguous region of arbitrary memory. Span has very interesting lifetime requirements (it can live only the stack), which makes these operation safe and fast.
 
 ### Step 5 - Parse Dates
 
@@ -279,7 +278,7 @@ private ReadOnlySpan<byte> ParseNumber(ReadOnlySpan<byte> span, out int parsed)
 }
 ```
 I parse the parts of the date: days, months, years as separate integers. To the actual parsing I search ```/``` characters, and slice into data Span. Using ```Utf8Parser``` I can parse the UTF8 encoded byte values straight into integers. I could do actually parse into DateTimes, but todays that TryParse override does accept a format string, while the default format includes the time parts (hours, minutes, seconds) as well.
-Once a number is parsed ```ParseNumber``` method retuns the unparsed part of the data slice for futher processing. 
+Once a number is parsed ```ParseNumber``` method returns the unparsed part of the data slice for further processing. 
 
 ### Step 6 - Run
 
@@ -295,7 +294,7 @@ public async Task Run()
   PrintResult();
 }
 ```
-Where are those ```PipeOptions``` come from. Based on some empricial testing on my machine these values seemed to provide the fastest execution.
+Where are those ```PipeOptions``` come from. Based on some empirical testing on my machine these values seemed to provide the fastest execution.
 
 ## Performance Measurements
 
@@ -305,3 +304,58 @@ A more interesting question is the effect of it on the GC. I will use PerfView f
 
 ### PerfView Analysis
 
+I open PerfView and select Collect -> Collect. This will collect ETW events across all processes. I want to focus on Allocation and GC events, so I enable ```.Net SampleAlloc```. Start Collection then run the application and stop the collection. This couple of seconds shall collect a couple of hundreds of MB of data in itself. It will also slow down the execution of the application, so a longer execution time shall not be surprising.
+
+#### The classic solution
+
+Looking at the reports, I would like to focus on the Allocation and GC Stats related events. Open GCStats and search for dotnet HolidaysSpan.dll:
+
+![GCStats](images/classic-GCStatsSummary.png)
+
+That means we had 23 GC-s all for Gen0 which is good as all objects were short lived. The application spent 200ms is less relevant as our sampling is quite intrusive causing longer Pause times. On the other hand we can see that 154.3 MB has been totally allocated.
+
+Open GC Heap Net Mem (coarse) Sampling report. It shows that the most allocated types are actually strings and string arrays.
+
+![Allocated](images/classic-HeapStats.png). 
+
+On a Flame Graph:
+
+![Allocated Flame Graph](images/classic-FlameGraph.png)
+
+That shows a lot of Strings again.
+
+Let's investigate the 23 GC-s that happened. Open Events and filter to process 'dotnet'. Select event ```Microsoft-Windows-DotNETRuntime/GC/Triggered```. This will show that all 23 GC-s are triggered by 'AllocSmall`.
+
+![GC Events](images/classic-GCEvents.png)
+
+We can even right click to any of them and select 'Open Any Stacks' to open a stack when the GC was triggered. Drill down to our application to confirm it is caused by our user code.
+
+![GC Stacks](images/classic-GCTriggerStack.png)
+
+#### The Span solution
+
+Let's repeat the above steps with the refactored, ```Span<T>``` solution.
+
+GC Stats:
+
+![Span GC Stats](images/span-GCStatsSummary.png)
+
+Besides having 0 GC-s, the Process Working set is also 10MB smaller.
+
+Open GC Heap Net Mem (coarse) Sampling report, to check the most allocated types:
+
+![Span Allocated](images/span-GCHeapStats.png)
+
+This shows the largest allocated type is the pooled arrays for bytes. We still allocate some string we need to print the results and get UTF8 representation for the delimiter characters. The amounts allocated is a lot less though as in the classic solution. The flame graph also looks considerable different:
+
+![Allocated Flame Graph](images/span-FlameGraph.png)
+
+Finally let's looks for the GC Trigger Events:
+
+![GC Events](images/span-GCEvents.png)
+
+This confirms are first finding, there were no GC Collections triggered for this application.
+
+### Summary 
+
+.net core made a handful of new types available to us, which can be used to optimize our application from memory usage point of view and from execution time point of view as well. Don't use them though blindly, always measure the application to see the impact it has own your application. Do you use it on a critical application path, or do you use it somewhere un-needed. The the code with ```Span<T>``` is save, and nice, it is still more verbose to the classical solution.
