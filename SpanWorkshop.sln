@@ -11,6 +11,17 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "images", "images", "{4B78D306-7843-4235-9DBA-89CE506A9936}"
+	ProjectSection(SolutionItems) = preProject
+		images\Hclassic-FlameGraph.png = images\Hclassic-FlameGraph.png
+		images\Hclassic-GCEvents.png = images\Hclassic-GCEvents.png
+		images\Hclassic-GCStatsSummary.png = images\Hclassic-GCStatsSummary.png
+		images\Hclassic-GCTriggerStack.png = images\Hclassic-GCTriggerStack.png
+		images\Hclassic-HeapStats.png = images\Hclassic-HeapStats.png
+		images\Hspan-FlameGraph.png = images\Hspan-FlameGraph.png
+		images\Hspan-GCEvents.png = images\Hspan-GCEvents.png
+		images\Hspan-GCHeapStats.png = images\Hspan-GCHeapStats.png
+		images\Hspan-GCStatsSummary.png = images\Hspan-GCStatsSummary.png
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
