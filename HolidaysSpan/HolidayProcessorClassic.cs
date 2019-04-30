@@ -47,7 +47,7 @@ namespace HolidaysSpan
     {
       while (startDate.Date <= endDate.Date)
       {
-        if (startDate.Date.DayOfWeek != DayOfWeek.Saturday || startDate.Date.DayOfWeek != DayOfWeek.Sunday)
+        if (startDate.Date.DayOfWeek != DayOfWeek.Saturday && startDate.Date.DayOfWeek != DayOfWeek.Sunday)
           if (!_days.TryAdd(startDate.Date.DayOfWeek, 1))
             _days[startDate.Date.DayOfWeek]++;
         startDate = startDate.AddDays(1);

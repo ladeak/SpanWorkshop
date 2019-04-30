@@ -2,7 +2,6 @@
 using System.Buffers;
 using System.Buffers.Text;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.IO.Pipelines;
 using System.Text;
@@ -103,11 +102,11 @@ namespace HolidaysSpan
       ProcessDates(startDate, endDate);
     }
 
-    private DateTime ParseDate(ReadOnlySpan<byte> span)
+    private DateTime ParseDate(ReadOnlySpan<byte> data)
     {
-      span = ParseNumber(span, out int year);
-      span = ParseNumber(span, out int month);
-      ParseNumber(span, out int day);
+      data = ParseNumber(data, out int year);
+      data = ParseNumber(data, out int month);
+      ParseNumber(data, out int day);
       return new DateTime(year, month, day);
     }
 

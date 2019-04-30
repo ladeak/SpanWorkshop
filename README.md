@@ -83,7 +83,7 @@ public class HolidayProcessorClassic
   {
     while (startDate.Date <= endDate.Date)
     {
-      if (startDate.Date.DayOfWeek != DayOfWeek.Saturday || startDate.Date.DayOfWeek != DayOfWeek.Sunday)
+      if (startDate.Date.DayOfWeek != DayOfWeek.Saturday && startDate.Date.DayOfWeek != DayOfWeek.Sunday)
         if (!_days.TryAdd(startDate.Date.DayOfWeek, 1))
           _days[startDate.Date.DayOfWeek]++;
       startDate = startDate.AddDays(1);
@@ -132,7 +132,7 @@ private void ProcessDates(DateTime startDate, DateTime endDate)
 
 private void PrintResult()
 {
-  StringBuilder sb = new StringBuilder();
+  StringBuilder sb = new StringBuilder(128);
   foreach (var entry in _days)
   {
     sb.Append(entry.Key);
