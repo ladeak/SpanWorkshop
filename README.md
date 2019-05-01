@@ -356,6 +356,31 @@ Finally let's looks for the GC Trigger Events:
 
 This confirms are first finding, there were no GC Collections triggered for this application.
 
+
+### Benchmark
+
+I have provided an alternative version of the classical solution for benchmarking. This simply removes console writes and adds minor optimizations for multiple consecutive ```Run()``` calls. The results on the benchmark:
+
+BenchmarkDotNet=v0.11.5, OS=Windows 10.0.17134.706 (1803/April2018Update/Redstone4), VM=Hyper-V
+Intel Xeon CPU E5-2673 v3 2.40GHz, 1 CPU, 2 logical and 2 physical cores
+.NET Core SDK=2.2.101
+  [Host] : .NET Core 2.2.0 (CoreCLR 4.6.27110.04, CoreFX 4.6.27110.04), 64bit RyuJIT
+  Core   : .NET Core 2.2.0 (CoreCLR 4.6.27110.04, CoreFX 4.6.27110.04), 64bit RyuJIT
+
+Job=Core  Runtime=Core
+
+|  Method |     Mean |     Error |    StdDev | Ratio | RatioSD |      Gen 0 | Gen 1 | Gen 2 |    Allocated |
+|-------- |---------:|----------:|----------:|------:|--------:|-----------:|------:|------:|-------------:|
+| Classic | 886.3 ms | 25.383 ms | 26.067 ms |  1.00 |    0.00 | 23000.0000 |     - |     - | 151683.54 KB |
+|    Span | 624.2 ms |  9.527 ms |  8.911 ms |  0.70 |    0.03 |          - |     - |     - |      5.31 KB |
+
+In case we read the file upfront into a memory stream and pass the stream to the processor, the results are even more staggering:
+
+|  Method |     Mean |    Error |   StdDev | Ratio | RatioSD |      Gen 0 | Gen 1 | Gen 2 |    Allocated |
+|-------- |---------:|---------:|---------:|------:|--------:|-----------:|------:|------:|-------------:|
+| Classic | 854.1 ms | 16.99 ms | 26.45 ms |  1.00 |    0.00 | 23000.0000 |     - |     - | 151679.01 KB |
+|    Span | 535.0 ms | 10.52 ms | 17.29 ms |  0.63 |    0.02 |          - |     - |     - |      1.15 KB |
+
 ### Summary 
 
 .net core made a handful of new types available to us, which can be used to optimize our application from memory usage point of view and from execution time point of view as well. Don't use them blindly though, always measure, to see the impact of the change on your application. Do you use it on a critical application path, or do you use it somewhere un-needed? The the code with ```Span<T>``` is safe and fast, but it is still more verbose to the classical solution.
